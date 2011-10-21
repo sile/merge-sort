@@ -4,7 +4,7 @@
   (:export sort))
 (in-package :merge-sort)
 
-(declaim (inline halve merge-lists merge-lists-recur)
+(declaim (inline halve merge-lists)
          (optimize (speed 3) (debug 0) (safety 0)))
 
 (defun halve (size)
@@ -12,40 +12,42 @@
   (multiple-value-bind (n1 x) (floor size 2)
     (values (+ n1 x) n1)))
 
-(defun merge-lists-recur (head list1 list2 test key)
-  (declare (function test key))
-  (labels ((recur (h l1 l2)
-             (cond ((null l1) (setf (cdr h) l2))
-                   ((null l2) (setf (cdr h) l1))
-                   ((not (funcall test (funcall key (car l1)) 
-                                  (funcall key (car l2))))
-                    (recur (setf (cdr h) l2) l1 (cdr l2)))
-                   (t
-                    (recur (setf (cdr h) l1) (cdr l1) l2)))))
-    (recur head list1 list2)
-    head))
+(defmacro cdr! (list new-cdr)
+  `(setf (cdr ,list) ,new-cdr))
 
+(defmacro multiple-value-let* (bind-specs &body body)
+  (if (null bind-specs)
+      `(locally ,@body)
+    (destructuring-bind ((vars exp) . rest) bind-specs
+      `(multiple-value-bind ,vars ,exp
+         (multiple-value-let* ,rest ,@body)))))
+         
 (defun merge-lists (head middle test key)
   (declare (function test key))
-    (if (funcall test (funcall key (first head)) (funcall key (first middle)))
-        (merge-lists-recur head (cdr head) middle test key)
-      (merge-lists-recur middle head (cdr middle) test key)))
+  (labels ((not-less-than (l1 l2)
+             (not (funcall test (funcall key (car l1)) (funcall key (car l2)))))
+           (recur (h l1 l2)
+             (cond ((null l1)             (values head (cdr! h l2)))
+                   ((null l2)             (values head (cdr! h l1)))
+                   ((not-less-than l1 l2) (recur (cdr! h l2) l1 (cdr l2)))
+                   (t                     (recur (cdr! h l1) (cdr l1) l2)))))
+    (declare (inline not-less-than))
+    (if (not-less-than head middle)
+        (recur head (cdr head) middle)
+      (recur middle head (cdr middle)))))
 
 (defun sort-impl (list size test key)
-  (declare (function test key)
-           (fixnum size))
-  (case size
-    (1 (values list 
-               (prog1 (cdr list) (setf (cdr list) nil))))
-    (otherwise
-     (multiple-value-bind (size/fh size/lh) (halve size)
-       (multiple-value-bind (list/fh list/lh) (sort-impl list size/fh test key)
-         (multiple-value-bind (list/lh list/end) (sort-impl list/lh size/lh test key)
-           (values (merge-lists list/fh list/lh test key)
-                   list/end)))))))
+  (declare (fixnum size))
+  (if (= 1 size)
+      (values list (prog1 (cdr list) (cdr! list nil)))
+    (multiple-value-let* (((size1 size2) (halve size))
+                          ((list1 rest) (sort-impl list size1 test key))
+                          ((list2 rest) (sort-impl rest size2 test key)))
+      (values (merge-lists list1 list2 test key) rest))))
 
 (defun sort (list test &key (key #'identity))
-  (declare (list list))
-  (let ((size (length list)))
-    (when (plusp size)
-      (values (sort-impl list size test key)))))
+  (declare (list list)
+           (function test key)
+           (optimize (speed 3) (safety 2) (debug 2)))
+  (when list
+    (values (sort-impl list (length list) test key))))

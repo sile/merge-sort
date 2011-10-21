@@ -29,6 +29,7 @@
     (recur list1 list2)
     h))
 
+;; TODO: 先頭にhead-consあり版も試す
 (defun merge-lists (head middle test key)
   (declare (function test key))
     (if (funcall test (funcall key (first head)) (funcall key (first middle)))

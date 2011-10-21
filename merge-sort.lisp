@@ -7,9 +7,9 @@
 (declaim (inline halve merge-lists)
          (optimize (speed 3) (debug 0) (safety 0)))
 
-(defun halve (size)
-  (declare (fixnum size))
-  (multiple-value-bind (n1 x) (floor size 2)
+(defun halve (n)
+  (declare (fixnum n))
+  (multiple-value-bind (n1 x) (floor n 2)
     (values (+ n1 x) n1)))
 
 (defmacro cdr! (list new-cdr)
@@ -33,8 +33,8 @@
                    (t                     (recur (cdr! h l1) (cdr l1) l2)))))
     (declare (inline not-less-than))
     (if (not-less-than list1 list2)
-        (values list2 (recur list2 list1 (cdr list2)))
-      (values list1 (recur list1 (cdr list1) list2)))))
+        (progn (recur list2 list1 (cdr list2)) list2)
+      (progn (recur list1 (cdr list1) list2) list1))))
 
 (defun sort-impl (list size test key)
   (declare (fixnum size))

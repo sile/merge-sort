@@ -22,7 +22,7 @@
       `(multiple-value-bind ,vars ,exp
          (multiple-value-let* ,rest ,@body)))))
          
-(defun merge-lists (head middle test key)
+(defun merge-lists (list1 list2 test key)
   (declare (function test key))
   (labels ((not-less-than (l1 l2)
              (not (funcall test (funcall key (car l1)) (funcall key (car l2)))))
@@ -32,9 +32,9 @@
                    ((not-less-than l1 l2) (recur (cdr! h l2) l1 (cdr l2)))
                    (t                     (recur (cdr! h l1) (cdr l1) l2)))))
     (declare (inline not-less-than))
-    (if (not-less-than head middle)
-        (recur head (cdr head) middle)
-      (recur middle head (cdr middle)))))
+    (if (not-less-than list1 list2)
+        (recur list1 (cdr list1) list2)
+      (recur list2 list1 (cdr list2)))))
 
 (defun sort-impl (list size test key)
   (declare (fixnum size))

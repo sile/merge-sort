@@ -4,6 +4,9 @@
   (:export sort))
 (in-package :merge-sort)
 
+(declaim (inline halve merge-lists merge-lists-recur)
+         (optimize (speed 3) (debug 0) (safety 0)))
+
 (defun halve (size)
   (declare (fixnum size))
   (multiple-value-bind (n1 x) (floor size 2)

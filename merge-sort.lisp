@@ -20,33 +20,29 @@
                    (t
                     (recur (setf (cdr h) l1) (cdr l1) l2)))))
     (recur head list1 list2)
-    (cdr head)))
+    head))
 
-
-;; TODO: 先頭にhead-consあり版も試す
-(defun merge-lists (h head middle test key)
+(defun merge-lists (head middle test key)
   (declare (function test key))
-  (merge-lists-recur h head middle test key))
+    (if (funcall test (funcall key (first head)) (funcall key (first middle)))
+        (merge-lists-recur head (cdr head) middle test key)
+      (merge-lists-recur middle head (cdr middle) test key)))
 
-(defun sort-impl (head list size test key)
+(defun sort-impl (list size test key)
   (declare (function test key)
            (fixnum size))
   (case size
-    (1 (let ((end (cdr list)))
-         (setf (cdr list) nil)
-         (values list end)))
+    (1 (values list 
+               (prog1 (cdr list) (setf (cdr list) nil))))
     (otherwise
      (multiple-value-bind (size/fh size/lh) (halve size)
-       (multiple-value-bind (list/fh list/lh)
-                            (sort-impl head list size/fh test key)
-         (multiple-value-bind (list/lh list/end)
-                              (sort-impl head list/lh size/lh test key)
-           ;; (print (list :ml list/fh list/lh list/end))
-           (values (merge-lists head list/fh list/lh test key)
+       (multiple-value-bind (list/fh list/lh) (sort-impl list size/fh test key)
+         (multiple-value-bind (list/lh list/end) (sort-impl list/lh size/lh test key)
+           (values (merge-lists list/fh list/lh test key)
                    list/end)))))))
 
 (defun sort (list test &key (key #'identity))
   (declare (list list))
   (let ((size (length list)))
     (when (plusp size)
-      (values (sort-impl (list :head) list size test key)))))
+      (values (sort-impl list size test key)))))

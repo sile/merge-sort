@@ -25,7 +25,7 @@
 (defun merge-lists (list1 list2 test key)
   (declare (function test key))
   (labels ((less-equal-than (l1 l2)
-             (not (funcall test (funcall key (car l2)) (funcall key (car ll)))))
+             (not (funcall test (funcall key (car l2)) (funcall key (car l1)))))
            (recur (head tail l1 l2)
              (cond ((null l1)               (cdr! tail l2) head)
                    ((null l2)               (cdr! tail l1) head)

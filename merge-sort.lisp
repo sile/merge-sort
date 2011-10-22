@@ -4,7 +4,7 @@
   (:export sort))
 (in-package :merge-sort)
 
-(declaim (inline halve last! merge-lists less-equal-than)
+(declaim (inline halve merge-lists less-equal-than)
          (optimize (speed 3) (debug 0) (safety 0)))
 
 (defun halve (n)
@@ -14,9 +14,6 @@
 
 (defmacro cdr! (list new-cdr)
   `(setf (cdr ,list) ,new-cdr))
-
-(defun last! (list)
-  (prog1 (cdr list) (cdr! list nil)))
 
 (defmacro multiple-value-let* (bind-specs &body body)
   (if (null bind-specs)

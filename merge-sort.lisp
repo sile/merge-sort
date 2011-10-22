@@ -4,7 +4,8 @@
   (:export sort))
 (in-package :merge-sort)
 
-(declaim (inline halve merge-lists sort2 less-equal-than)
+(declaim (inline halve last! merge-lists less-equal-than
+                 sort2 sort3 sort4 sort5)
          (optimize (speed 3) (debug 0) (safety 0)))
 
 (defun halve (n)
@@ -14,6 +15,9 @@
 
 (defmacro cdr! (list new-cdr)
   `(setf (cdr ,list) ,new-cdr))
+
+(defun last! (list)
+  (prog1 (cdr list) (cdr! list nil)))
 
 (defmacro multiple-value-let* (bind-specs &body body)
   (if (null bind-specs)
@@ -42,22 +46,76 @@
 (defun sort2 (list test key &aux (l1 list) (l2 (cdr list)))
   (unless (less-equal-than l1 l2 test key)
     (rotatef (car l1) (car l2)))
-  (values l1 (prog1 (cdr l2) (cdr! l2 nil))))
+  (values l1 (last! l2)))
+
+(eval-when (:compile-toplevel)
+  (defun symb (&rest args)
+    (intern (format nil "~{~a~}" args))))
+
+(macrolet ((vars (vars (list key) &body body)
+             `(let* ,(loop FOR prev = nil THEN var
+                           FOR var IN vars
+                           FOR i fixnum FROM 0
+                           COLLECT (if prev 
+                                       `(,var (cdr ,prev))
+                                     `(,var ,list)))
+                (declare (function ,key))
+                (let ,(loop FOR var IN vars
+                            COLLECT `(,(symb '_ var) (funcall ,key (car ,var))))
+                  ,@body)))
+           (swap-if-greater-than (x y test)
+             `(unless (less-equal-than ,x ,y ,test #'identity)
+                (rotatef (car ,x) (car ,y))
+                (rotatef ,(symb '_ x) ,(symb '_ y)))))
+
+  (defun sort3 (list test key)
+    (vars (a b c) (list key)
+      (swap-if-greater-than a c test)
+      (swap-if-greater-than a b test)
+      (swap-if-greater-than b c test)
+      (values a (last! c))))
+  
+  (defun sort4 (list test key)
+    (vars (a b c d) (list key)
+      (swap-if-greater-than a c test)
+      (swap-if-greater-than b d test)
+      (swap-if-greater-than a b test)
+      (swap-if-greater-than c d test)
+      (swap-if-greater-than b c test)
+      (values a (last! d))))
+
+  (defun sort5 (list test key)
+    (vars (a b c d e) (list key)
+      (swap-if-greater-than a b test)
+      (swap-if-greater-than d e test)
+      (swap-if-greater-than a c test)
+      (swap-if-greater-than b c test)
+      (swap-if-greater-than a d test)
+      (swap-if-greater-than c d test)
+      (swap-if-greater-than b e test)
+      (swap-if-greater-than b c test)
+      (swap-if-greater-than d e test)
+      (values a (last! e)))))
 
 (defun sort-impl (list size test key)
   (declare (fixnum size))
   (case size
-    (1 (values list (prog1 (cdr list) (cdr! list nil))))
-    (2 (sort2 list test key))
+    (5 (sort5 list test key))
+    (4 (sort4 list test key))
+    (3 (sort3 list test key))
     (t
-    (multiple-value-let* (((size1 size2) (halve size))
-                          ((list1 rest) (sort-impl list size1 test key))
-                          ((list2 rest) (sort-impl rest size2 test key)))
-      (values (merge-lists list1 list2 test key) rest)))))
+     (multiple-value-let* (((size1 size2) (halve size))
+                           ((list1 rest) (sort-impl list size1 test key))
+                           ((list2 rest) (sort-impl rest size2 test key)))
+       (values (merge-lists list1 list2 test key) rest)))))
 
-(defun sort (list test &key (key #'identity))
+(defun sort (list test &key (key #'identity) &aux (size (length list)))
   (declare (list list)
            (function test key)
            (optimize (speed 3) (safety 2) (debug 2)))
-  (when list
-    (values (sort-impl list (length list) test key))))
+  (case size
+    ((0 1) list)
+    (2 
+     (values (sort2 list test key)))
+    (otherwise
+     (values (sort-impl list size test key)))))

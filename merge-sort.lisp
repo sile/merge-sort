@@ -51,3 +51,26 @@
            (optimize (speed 3) (safety 2) (debug 2)))
   (when list
     (values (sort-impl list (length list) test key))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(declaim (inline gen-merge-lists-fun gen-sort-fn))
+(defun gen-merge-lists-fun (test key)
+  (lambda (list1 list2) 
+    (merge-lists list1 list2 test key)))
+
+(defun sort-impl2 (list size merge-fun)
+  (declare (fixnum size)
+           (function merge-fun))
+  (if (= 1 size)
+      (values list (prog1 (cdr list) (cdr! list nil)))
+    (multiple-value-let* (((size1 size2) (halve size))
+                          ((list1 rest) (sort-impl2 list size1 merge-fun))
+                          ((list2 rest) (sort-impl2 rest size2 merge-fun)))
+      (values (funcall merge-fun list1 list2) rest))))
+
+(defun gen-sort-fn (test &key (key #'identity))
+  (lambda (list)
+    (declare (list list)
+             (optimize (speed 3) (safety 2) (debug 2)))
+    (when list
+      (values (sort-impl2 list (length list) (gen-merge-lists-fun test key))))))

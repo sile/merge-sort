@@ -4,6 +4,11 @@
 [バージョン]
 ・0.1.0
 
+[使用方法]
+> (load "merge-sort.lisp")
+> (merge-sort:sort '(3 1 2) #'<)
+=> (1 2 3)
+
 [API]
 # パッケージ
 ・merge-sort

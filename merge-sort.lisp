@@ -1,7 +1,7 @@
 (defpackage merge-sort
   (:use common-lisp)
   (:shadow :common-lisp sort)
-  (:export sort inline-sort))
+  (:export sort))
 (in-package :merge-sort)
 
 (declaim (inline halve merge-lists inline-sort sort-impl)
@@ -62,7 +62,6 @@
     (values (sort-impl list (length list) test key))))
 
 (define-compiler-macro sort (&whole form list test &key (key '#'identity) inline)
-  (print (list list test key))
   (if inline
       `(inline-sort ,list ,test :key ,key)
     form))

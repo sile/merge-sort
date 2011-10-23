@@ -1,10 +1,10 @@
 (defpackage merge-sort
   (:use common-lisp)
   (:shadow :common-lisp sort)
-  (:export sort))
+  (:export sort inline-sort))
 (in-package :merge-sort)
 
-(declaim (inline halve merge-lists less-equal-than)
+(declaim (inline halve merge-lists inline-sort sort-impl)
          (optimize (speed 3) (debug 0) (safety 0)))
 
 (defun halve (n)
@@ -37,40 +37,32 @@
       (recur list2 list2 list1 (cdr list2)))))
 
 (defun sort-impl (list size test key)
-  (declare (fixnum size))
-  (if (= 1 size)
-      (values list (prog1 (cdr list) (cdr! list nil)))
-    (multiple-value-let* (((size1 size2) (halve size))
-                          ((list1 rest) (sort-impl list size1 test key))
-                          ((list2 rest) (sort-impl rest size2 test key)))
-      (values (merge-lists list1 list2 test key) rest))))
+  (labels ((recur (list size)
+             (declare (fixnum size))
+             (if (= 1 size)
+                 (values list (prog1 (cdr list) (cdr! list nil)))
+               (multiple-value-let* (((size1 size2) (halve size))
+                                     ((list1 rest) (recur list size1))
+                                     ((list2 rest) (recur rest size2)))
+                 (values (merge-lists list1 list2 test key) rest)))))
+    (recur list size)))
 
-(defun sort (list test &key (key #'identity))
+(defun sort (list test &key (key #'identity) inline)
   (declare (list list)
            (function test key)
+           (ignore inline)
            (optimize (speed 3) (safety 2) (debug 2)))
   (when list
     (values (sort-impl list (length list) test key))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(declaim (inline gen-merge-lists-fun gen-sort-fn))
-(defun gen-merge-lists-fun (test key)
-  (lambda (list1 list2) 
-    (merge-lists list1 list2 test key)))
+(defun inline-sort (list test &key (key #'identity))
+  (declare (list list)
+           (optimize (speed 3) (safety 0) (debug 0)))
+  (when list
+    (values (sort-impl list (length list) test key))))
 
-(defun sort-impl2 (list size merge-fun)
-  (declare (fixnum size)
-           (function merge-fun))
-  (if (= 1 size)
-      (values list (prog1 (cdr list) (cdr! list nil)))
-    (multiple-value-let* (((size1 size2) (halve size))
-                          ((list1 rest) (sort-impl2 list size1 merge-fun))
-                          ((list2 rest) (sort-impl2 rest size2 merge-fun)))
-      (values (funcall merge-fun list1 list2) rest))))
-
-(defun gen-sort-fn (test &key (key #'identity))
-  (lambda (list)
-    (declare (list list)
-             (optimize (speed 3) (safety 2) (debug 2)))
-    (when list
-      (values (sort-impl2 list (length list) (gen-merge-lists-fun test key))))))
+(define-compiler-macro sort (&whole form list test &key (key '#'identity) inline)
+  (print (list list test key))
+  (if inline
+      `(inline-sort ,list ,test :key ,key)
+    form))

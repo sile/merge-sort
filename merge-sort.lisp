@@ -9,7 +9,6 @@
 (defmacro cdr! (list new-cdr)
   `(setf (cdr ,list) ,new-cdr))
           
-   
 (defun merge-lists (head list1 list2 test key &aux (next (cdr head)))
   (labels ((less-equal-than (list1 list2)
              (not (funcall test (funcall key (car list2)) (funcall key (car list1)))))
@@ -20,18 +19,18 @@
     (declare (inline less-equal-than))
     (recur head list1 list2)))
 
+(declaim (ftype (function (list function function) list) sort-impl))
 (defun sort-impl (list test key &aux (head (cons :head list)))
-  (declare (list list)
-           (function test key)
-           (optimize (speed 3) (safety 2) (debug 2)))
-  (labels ((recur (list size &aux (half1 (ash size -1)) (half2 (- size half1)))
+  (declare (optimize (speed 3) (safety 2) (debug 2)))
+  (labels ((recur (size &aux (half1 (ash size -1)) (half2 (- size half1)))
              (declare (optimize (speed 3) (safety 0) (debug 0))
-                      (fixnum size half1 half2))
+                      (fixnum size)) 
              (if (= 1 size)
-                 (shiftf (cdr head) (cdr list) nil)
-               (merge-lists head (recur (cdr head) half1) (recur (cdr head) half2) test key))))
+                 (let ((next (cdr head)))
+                   (shiftf (cdr head) (cdr next) nil))
+               (merge-lists head (recur half1) (recur half2) test key))))
     (when list
-      (values (recur list (length list))))))
+      (recur (length list)))))
 
 (defun sort (list test &key (key #'identity) inline)
   (declare (ignore inline))

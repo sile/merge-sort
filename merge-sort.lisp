@@ -8,12 +8,13 @@
 
 (defmacro cdr! (list new-cdr)
   `(setf (cdr ,list) ,new-cdr))
+          
    
 (defun merge-lists (head list1 list2 test key &aux (next (cdr head)))
   (labels ((less-equal-than (list1 list2)
              (not (funcall test (funcall key (car list2)) (funcall key (car list1)))))
            (recur (tail l1 l2)
-             (cond ((null l1)                (cdr! tail l2) 
+             (cond ((null l1) (cdr! tail l2) 
                     (prog1 (cdr head)
                       (cdr! head next)))
                    ((less-equal-than l1 l2)  (recur (cdr! tail l1) (cdr l1) l2))
@@ -21,7 +22,7 @@
     (declare (inline less-equal-than))
     (recur head list1 list2)))
 
-(defun sort-impl (list test key &aux (head (list :head)))
+(defun sort-impl (list test key &aux (head (cons :head list)))
   (declare (list list)
            (function test key)
            (optimize (speed 3) (safety 2) (debug 2)))
@@ -29,9 +30,7 @@
              (declare (optimize (speed 3) (safety 0) (debug 0))
                       (fixnum size half))
              (if (= 1 size)
-                 (progn (cdr! head (cdr list))
-                        (cdr! list nil)
-                        list)
+                 (shiftf (cdr head) (cdr list) nil)
                (merge-lists head 
                             (recur list half) (recur (cdr head) (- size half))
                             test key))))

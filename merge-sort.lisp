@@ -8,7 +8,8 @@
 
 (defmacro cdr! (list new-cdr)
   `(setf (cdr ,list) ,new-cdr))
-          
+      
+;; unstable    
 (defun merge-lists (head list1 list2 test key &aux (next (cdr head)))
   (labels ((less-equal-than (list1 list2)
              (not (funcall test (funcall key (car list2)) (funcall key (car list1)))))
@@ -16,6 +17,18 @@
              (cond ((null l1)               (cdr! tail l2) (shiftf (cdr head) next))
                    ((less-equal-than l1 l2) (recur (cdr! tail l1) (cdr l1) l2))
                    (t                       (recur (cdr! tail l2) (cdr l2) l1)))))
+    (declare (inline less-equal-than))
+    (recur head list1 list2)))
+
+;; stable
+(defun merge-lists (head list1 list2 test key &aux (next (cdr head)))
+  (labels ((less-equal-than (list1 list2)
+             (not (funcall test (funcall key (car list2)) (funcall key (car list1)))))
+           (recur (tail l1 l2)
+             (cond ((null l1)               (cdr! tail l2) (shiftf (cdr head) next))
+                   ((null l2)               (cdr! tail l1) (shiftf (cdr head) next))
+                   ((less-equal-than l1 l2) (recur (cdr! tail l1) (cdr l1) l2))
+                   (t                       (recur (cdr! tail l2) l1 (cdr l2))))))
     (declare (inline less-equal-than))
     (recur head list1 list2)))
 

@@ -9,7 +9,8 @@
 (defmacro cdr! (list new-cdr)
   `(setf (cdr ,list) ,new-cdr))
       
-;; unstable    
+;; unstable   
+#+C
 (defun merge-lists (head list1 list2 test key &aux (next (cdr head)))
   (labels ((less-equal-than (list1 list2)
              (not (funcall test (funcall key (car list2)) (funcall key (car list1)))))
@@ -21,16 +22,31 @@
     (recur head list1 list2)))
 
 ;; stable
+#+C
 (defun merge-lists (head list1 list2 test key &aux (next (cdr head)))
   (labels ((less-equal-than (list1 list2)
              (not (funcall test (funcall key (car list2)) (funcall key (car list1)))))
            (recur (tail l1 l2)
              (cond ((null l1)               (cdr! tail l2) (shiftf (cdr head) next))
-                   ((null l2)               (cdr! tail l1) (shiftf (cdr head) next))
+                   ((null l2)               (cdr! tail l1) (shiftf (cdr head) next)) 
                    ((less-equal-than l1 l2) (recur (cdr! tail l1) (cdr l1) l2))
                    (t                       (recur (cdr! tail l2) l1 (cdr l2))))))
     (declare (inline less-equal-than))
     (recur head list1 list2)))
+
+;; loop-stable
+(defun merge-lists (head list1 list2 test key &aux (next (cdr head)) (tail head))
+  (macrolet ((less-equal-than (l1 l2)
+               `(not (funcall test (funcall key (car ,l2)) (funcall key (car ,l1)))))
+             (merge-one (l1 l2)
+               `(progn (setf tail (setf (cdr tail) ,l1))
+                       (unless (setf ,l1 (cdr ,l1))
+                         (setf (cdr tail) ,l2)
+                         (return (shiftf (cdr head) next))))))
+    (loop
+     (if (less-equal-than list1 list2)
+         (merge-one list1 list2)
+       (merge-one list2 list1)))))
 
 (declaim (ftype (function (list function function) list) sort-impl))
 (defun sort-impl (list test key &aux (head (cons :head list)))

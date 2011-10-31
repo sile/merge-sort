@@ -21,7 +21,8 @@
 
 (declaim (ftype (function (list function function) list) sort-impl))
 (defun sort-impl (list test key &aux (head (cons :head list)))
-  (declare (optimize (speed 3) (safety 2) (debug 2)))
+  (declare (optimize (speed 3) (safety 2) (debug 2))
+           (dynamic-extent head))
   (labels ((recur (size)
              (declare (optimize (speed 3) (safety 0) (debug 0))
                       (fixnum size)) 

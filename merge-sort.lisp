@@ -22,13 +22,14 @@
 (declaim (ftype (function (list function function) list) sort-impl))
 (defun sort-impl (list test key &aux (head (cons :head list)))
   (declare (optimize (speed 3) (safety 2) (debug 2)))
-  (labels ((recur (size &aux (half1 (ash size -1)) (half2 (- size half1)))
+  (labels ((recur (size)
              (declare (optimize (speed 3) (safety 0) (debug 0))
                       (fixnum size)) 
              (if (= 1 size)
                  (let ((next (cdr head)))
                    (shiftf (cdr head) (cdr next) nil))
-               (merge-lists head (recur half1) (recur half2) test key))))
+               (let ((half (ash size -1)))
+                 (merge-lists head (recur half) (recur (- size half)) test key)))))
     (when list
       (recur (length list)))))
 
